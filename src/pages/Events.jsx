@@ -203,9 +203,6 @@ export default function Events() {
                         {event.isFull && !event.isEnded && (
                           <div className="event-full-modern">Full</div>
                         )}
-                        {event.isEnded && (
-                          <div className="event-ended-badge-modern-inline">Ended</div>
-                        )}
                       </div>
                     )}
                     {event.isEnded ? (
