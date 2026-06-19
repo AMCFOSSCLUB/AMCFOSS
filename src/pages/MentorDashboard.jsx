@@ -20,7 +20,6 @@ export default function MentorDashboard() {
   const [mentorEmail, setMentorEmail] = useState("");
   const [mentorRollNo, setMentorRollNo] = useState("");
   const [mentorDomain, setMentorDomain] = useState("");
-  const [mentorProfile, setMentorProfile] = useState(null);
 
   const tasksRef = useMemo(() => collection(db, "tasks"), []);
 
@@ -53,7 +52,7 @@ export default function MentorDashboard() {
       const snap = await getDoc(userRef);
       if (snap.exists()) {
         const profileData = snap.data();
-        setMentorProfile(profileData);
+
         setMentorName(profileData.name || user.displayName || "");
         setMentorEmail(profileData.email || user.email || "");
         setMentorRollNo(profileData.rollNo || "");

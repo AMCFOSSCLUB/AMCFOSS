@@ -1,70 +1,59 @@
-# Getting Started with Create React App
+# AMC FOSS Club Community Portal
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A modern, visually stunning, and high-performance community web portal designed for the **AMC FOSS (Free and Open Source Software)** club. This platform handles event management, participant tracking, and provides role-based spaces for community mentors and office bearers.
 
-## Available Scripts
+---
+
+## 🚀 Key Features
+
+*   **Premium Landing Page**: A responsive, feature-rich interface styled with customized cursors, visual scroll indicators, and animations.
+*   **Real-time Event Countdowns**: Live countdown timers for upcoming events dynamically pulled from the Firebase backend.
+*   **Role-based Workspaces**:
+    *   **Mentors**: Space to guide contributors, assign tasks, and track execution.
+    *   **Office Bearers**: Tools to manage the event lifecycle, monitor registrations, and post announcements.
+*   **Responsive Performance**: Highly-optimized scroll progress indicators and loader animations built with performance-first practices.
+*   **Auth Integrations**: Secure login/registration restricted to official college email domains.
+
+---
+
+## 🛠️ Tech Stack
+
+*   **Frontend**: React (v19)
+*   **Animations**: Framer Motion, AOS (Animate on Scroll)
+*   **Styles**: TailwindCSS, Vanilla CSS
+*   **Database & Auth**: Firebase (Authentication & Firestore)
+
+---
+
+## ⚙️ Getting Started
+
+### 1. Installation
+
+Clone the repository and install the node dependencies:
+
+```bash
+npm install
+```
+
+### 2. Available Scripts
 
 In the project directory, you can run:
 
-### `npm start`
+#### `npm start`
 
-Runs the app in the development mode.\
+Runs the app in development mode.  
 Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+#### `npm run build`
 
-### `npm test`
+Builds the app for production in the `build/` folder. It bundles React in production mode and optimizes the build for the best performance.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+---
 
-### `npm run build`
+## 📁 Project Structure
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+*   `src/foss.jsx` — Core landing page component.
+*   `src/components/` — Shared UI elements (CustomCursor, Loader, AuthLayout, etc.).
+*   `src/pages/` — Main view pages including `Login`, `Register`, `Events`, `SelectRole`, `MentorDashboard`, and `OfficeDashboard`.
+*   `src/context/` — State providers for authentication and database services.
+*   `src/firebase.js` — Configuration setup for Firebase services.
