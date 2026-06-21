@@ -111,32 +111,8 @@ const HomeEvents = memo(() => {
           return aEnded ? 1 : -1;
         }).slice(0, 2);
 
-        const getMockEvents = () => {
-          return [
-            {
-              id: "mock-event-1",
-              title: "Kickstart Your Open Source Journey : A Beginner's Guide",
-              description: "Speaker : KoushalyaShree Time : 5.30pm to 6.30pm",
-              date: "2024-11-25",
-              time: "17:30",
-              participantLimit: 150,
-              participantCount: 141,
-              isFull: false,
-              isEnded: true,
-            },
-            {
-              id: "mock-event-2",
-              title: "Clue Quest",
-              description: "Tantrotsav 25",
-              date: "2025-01-30",
-              time: "10:00",
-              isEnded: true,
-            }
-          ];
-        };
-
         if (sortedEvents.length === 0) {
-          sortedEvents = getMockEvents();
+          sortedEvents = fallbackHomeEvents;
         }
 
         if (isMounted) {

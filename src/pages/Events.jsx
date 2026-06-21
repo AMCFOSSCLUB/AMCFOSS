@@ -94,7 +94,6 @@ export default function Events() {
         });
 
         setEvents(sortedEvents);
-        console.log("Events loaded:", sortedEvents.length, "events");
       } catch (err) {
         const isExpectedFallback = err?.message === "Firebase is not configured";
 
