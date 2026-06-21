@@ -5,6 +5,28 @@ import { collection } from "firebase/firestore";
 import { db, isFirebaseConfigured, getDocsWithTimeout } from "../firebase";
 import "../Foss2.css";
 
+const fallbackMockEvents = [
+  {
+    id: "mock-event-1",
+    title: "Kickstart Your Open Source Journey : A Beginner's Guide",
+    description: "Speaker : KoushalyaShree Time : 5.30pm to 6.30pm",
+    date: "2024-11-25",
+    time: "17:30",
+    participantLimit: 150,
+    participantCount: 141,
+    isFull: false,
+    isEnded: true,
+  },
+  {
+    id: "mock-event-2",
+    title: "Clue Quest",
+    description: "Tantrotsav 25",
+    date: "2025-01-30",
+    time: "10:00",
+    isEnded: true,
+  },
+];
+
 export default function Events() {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -17,7 +39,8 @@ export default function Events() {
       setError(null);
       try {
         if (!isFirebaseConfigured) {
-          throw new Error("Firebase is not configured");
+          setEvents(fallbackMockEvents);
+          return;
         }
         const snap = await getDocsWithTimeout(eventsRef, 1500);
         const eventsList = snap.docs.map((docSnap) => {
@@ -73,35 +96,21 @@ export default function Events() {
         setEvents(sortedEvents);
         console.log("Events loaded:", sortedEvents.length, "events");
       } catch (err) {
-        console.error("Failed to load events:", err);
-        console.error("Error details:", {
-          code: err.code,
-          message: err.message,
-          stack: err.stack
-        });
+        const isExpectedFallback = err?.message === "Firebase is not configured";
 
-        const fallbackMockEvents = [
-          {
-            id: "mock-event-1",
-            title: "Kickstart Your Open Source Journey : A Beginner's Guide",
-            description: "Speaker : KoushalyaShree Time : 5.30pm to 6.30pm",
-            date: "2024-11-25",
-            time: "17:30",
-            participantLimit: 150,
-            participantCount: 141,
-            isFull: false,
-            isEnded: true,
-          },
-          {
-            id: "mock-event-2",
-            title: "Clue Quest",
-            description: "Tantrotsav 25",
-            date: "2025-01-30",
-            time: "10:00",
-            isEnded: true,
-          }
-        ];
+        if (!isExpectedFallback) {
+          console.error("Failed to load events:", err);
+          console.error("Error details:", {
+            code: err?.code,
+            message: err?.message,
+            stack: err?.stack,
+          });
+        }
+
         setEvents(fallbackMockEvents);
+        if (!isExpectedFallback) {
+          setError("Unable to load live events right now. Showing the latest available highlights instead.");
+        }
       } finally {
         setLoading(false);
       }

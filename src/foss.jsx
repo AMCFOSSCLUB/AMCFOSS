@@ -9,6 +9,28 @@ import { addDoc, collection, serverTimestamp } from "firebase/firestore";
 import { db, isFirebaseConfigured, getDocsWithTimeout } from "./firebase";
 import { useAuth } from "./context/AuthContext";
 
+const fallbackHomeEvents = [
+  {
+    id: "mock-event-1",
+    title: "Kickstart Your Open Source Journey : A Beginner's Guide",
+    description: "Speaker : KoushalyaShree Time : 5.30pm to 6.30pm",
+    date: "2024-11-25",
+    time: "17:30",
+    participantLimit: 150,
+    participantCount: 141,
+    isFull: false,
+    isEnded: true,
+  },
+  {
+    id: "mock-event-2",
+    title: "Clue Quest",
+    description: "Tantrotsav 25",
+    date: "2025-01-30",
+    time: "10:00",
+    isEnded: true,
+  },
+];
+
 // HomeEvents component moved outside to prevent re-renders
 const HomeEvents = memo(() => {
   const [homeEvents, setHomeEvents] = useState([]);
@@ -30,7 +52,11 @@ const HomeEvents = memo(() => {
       try {
         setIsLoading(true);
         if (!isFirebaseConfigured) {
-          throw new Error("Firebase is not configured");
+          if (isMounted) {
+            setHomeEvents(fallbackHomeEvents);
+            setIsLoading(false);
+          }
+          return;
         }
         const snap = await getDocsWithTimeout(eventsRef, 1500);
         if (!isMounted) return;
@@ -118,30 +144,12 @@ const HomeEvents = memo(() => {
           setIsLoading(false);
         }
       } catch (error) {
-        console.error("Failed to load events", error);
         if (isMounted) {
-          const fallbackMockEvents = [
-            {
-              id: "mock-event-1",
-              title: "Kickstart Your Open Source Journey : A Beginner's Guide",
-              description: "Speaker : KoushalyaShree Time : 5.30pm to 6.30pm",
-              date: "2024-11-25",
-              time: "17:30",
-              participantLimit: 150,
-              participantCount: 141,
-              isFull: false,
-              isEnded: true,
-            },
-            {
-              id: "mock-event-2",
-              title: "Clue Quest",
-              description: "Tantrotsav 25",
-              date: "2025-01-30",
-              time: "10:00",
-              isEnded: true,
-            }
-          ];
-          setHomeEvents(fallbackMockEvents);
+          const isExpectedFallback = error?.message === "Firebase is not configured";
+          if (!isExpectedFallback) {
+            console.error("Failed to load events", error);
+          }
+          setHomeEvents(fallbackHomeEvents);
           setIsLoading(false);
         }
       }
