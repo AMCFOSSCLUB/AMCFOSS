@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
@@ -14,10 +14,8 @@ export default function ExamPage() {
     const [timeLeft, setTimeLeft] = useState(1 * 60); // 1 minute in seconds
     const [showWarning, setShowWarning] = useState(false);
     const [warningCountdown, setWarningCountdown] = useState(5);
-    const [isFullscreen, setIsFullscreen] = useState(false);
     const [isEliminated, setIsEliminated] = useState(false);
     const [eliminationReason, setEliminationReason] = useState('');
-    const [score, setScore] = useState(0);
     const [showUnansweredModal, setShowUnansweredModal] = useState(false);
     const [unansweredCount, setUnansweredCount] = useState(0);
     const [showSuccessModal, setShowSuccessModal] = useState(false);
@@ -26,7 +24,7 @@ export default function ExamPage() {
     const warningTimerRef = useRef(null);
 
     // Sample questions
-    const questions = [
+    const questions = useMemo(() => [
         {
             id: 1,
             question: "What is the capital of France?",
@@ -102,10 +100,10 @@ export default function ExamPage() {
             options: ["MySQL", "PostgreSQL", "MongoDB", "Oracle"],
             correctAnswer: 2
         }
-    ];
+    ], []);
 
     // Fullscreen management
-    const enterFullscreen = async () => {
+    const enterFullscreen = useCallback(async () => {
         try {
             const elem = document.documentElement;
             if (elem.requestFullscreen) {
@@ -115,14 +113,13 @@ export default function ExamPage() {
             } else if (elem.msRequestFullscreen) {
                 await elem.msRequestFullscreen();
             }
-            setIsFullscreen(true);
         } catch (error) {
             console.error('Fullscreen error:', error);
             alert('⚠️ Please press F11 to enter fullscreen mode manually.');
         }
-    };
+    }, []);
 
-    const exitFullscreen = () => {
+    const exitFullscreen = useCallback(() => {
         try {
             if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
                 if (document.exitFullscreen) {
@@ -133,12 +130,73 @@ export default function ExamPage() {
                     document.msExitFullscreen();
                 }
             }
-            setIsFullscreen(false);
         } catch (error) {
             console.log('Exit fullscreen error:', error);
-            setIsFullscreen(false);
         }
-    };
+    }, []);
+
+    const eliminate = useCallback((reason) => {
+        setIsEliminated(true);
+        setEliminationReason(reason);
+        setExamState('eliminated');
+        exitFullscreen();
+        if (timerRef.current) clearInterval(timerRef.current);
+    }, [exitFullscreen]);
+
+    const submitExam = useCallback(async () => {
+        // Calculate score
+        let correctCount = 0;
+        questions.forEach((q, index) => {
+            if (answers[index] === q.correctAnswer) {
+                correctCount++;
+            }
+        });
+
+        // Stop timer
+        if (timerRef.current) clearInterval(timerRef.current);
+
+        try {
+            // Save to Firestore WOC collection
+            await addDoc(collection(db, 'WOC'), {
+                name: candidateName,
+                rollNo: candidateId,
+                score: correctCount,
+                percentage: ((correctCount / questions.length) * 100).toFixed(2),
+                completedAt: serverTimestamp(),
+                timeSpent: (1 * 60) - timeLeft, // seconds spent
+            });
+
+            // Show success modal
+            setShowSuccessModal(true);
+
+            // Redirect after 3 seconds
+            setTimeout(() => {
+                exitFullscreen();
+                navigate('/events');
+            }, 3000);
+        } catch (error) {
+            console.error('Error saving exam results:', error);
+            // Even on error, redirect
+            setTimeout(() => {
+                exitFullscreen();
+                navigate('/events');
+            }, 2000);
+        }
+    }, [answers, candidateId, candidateName, exitFullscreen, navigate, questions, timeLeft]);
+
+    const handleSubmit = useCallback(async (autoSubmit = false) => {
+        const unanswered = answers.filter(a => a === null).length;
+
+        // Show modal for unanswered questions (not for auto-submit)
+        if (!autoSubmit && unanswered > 0) {
+            setUnansweredCount(unanswered);
+            setShowUnansweredModal(true);
+            return;
+        }
+
+        // Proceed with submission
+        await submitExam();
+    }, [answers, submitExam]);
 
     // Handle fullscreen changes
     useEffect(() => {
@@ -149,8 +207,6 @@ export default function ExamPage() {
                 document.mozFullScreenElement ||
                 document.msFullscreenElement
             );
-
-            setIsFullscreen(inFullscreen);
 
             if (!inFullscreen && examState === 'exam' && !isEliminated) {
                 setShowWarning(true);
@@ -184,7 +240,7 @@ export default function ExamPage() {
         return () => {
             if (warningTimerRef.current) clearTimeout(warningTimerRef.current);
         };
-    }, [showWarning, warningCountdown]);
+    }, [showWarning, warningCountdown, eliminate]);
 
     // Exam timer
     useEffect(() => {
@@ -203,7 +259,7 @@ export default function ExamPage() {
         return () => {
             if (timerRef.current) clearInterval(timerRef.current);
         };
-    }, [examState, timeLeft]);
+    }, [examState, timeLeft, handleSubmit]);
 
     // Keyboard blocking during exam
     useEffect(() => {
@@ -259,15 +315,7 @@ export default function ExamPage() {
             document.removeEventListener('paste', handleCopy);
             document.removeEventListener('cut', handleCopy);
         };
-    }, [examState, showWarning, navigate]);
-
-    const eliminate = (reason) => {
-        setIsEliminated(true);
-        setEliminationReason(reason);
-        setExamState('eliminated');
-        exitFullscreen();
-        if (timerRef.current) clearInterval(timerRef.current);
-    };
+    }, [examState, showWarning, navigate, enterFullscreen, exitFullscreen]);
 
     const startExam = () => {
         if (!candidateName.trim() || !candidateId.trim()) {
@@ -283,61 +331,6 @@ export default function ExamPage() {
         const newAnswers = [...answers];
         newAnswers[currentQuestion] = optionIndex;
         setAnswers(newAnswers);
-    };
-
-    const handleSubmit = async (autoSubmit = false) => {
-        const unanswered = answers.filter(a => a === null).length;
-
-        // Show modal for unanswered questions (not for auto-submit)
-        if (!autoSubmit && unanswered > 0) {
-            setUnansweredCount(unanswered);
-            setShowUnansweredModal(true);
-            return;
-        }
-
-        // Proceed with submission
-        await submitExam();
-    };
-
-    const submitExam = async () => {
-        // Calculate score
-        let correctCount = 0;
-        questions.forEach((q, index) => {
-            if (answers[index] === q.correctAnswer) {
-                correctCount++;
-            }
-        });
-
-        // Stop timer
-        if (timerRef.current) clearInterval(timerRef.current);
-
-        try {
-            // Save to Firestore WOC collection
-            await addDoc(collection(db, 'WOC'), {
-                name: candidateName,
-                rollNo: candidateId,
-                score: correctCount,
-                percentage: ((correctCount / questions.length) * 100).toFixed(2),
-                completedAt: serverTimestamp(),
-                timeSpent: (1 * 60) - timeLeft, // seconds spent
-            });
-
-            // Show success modal
-            setShowSuccessModal(true);
-
-            // Redirect after 3 seconds
-            setTimeout(() => {
-                exitFullscreen();
-                navigate('/events');
-            }, 3000);
-        } catch (error) {
-            console.error('Error saving exam results:', error);
-            // Even on error, redirect
-            setTimeout(() => {
-                exitFullscreen();
-                navigate('/events');
-            }, 2000);
-        }
     };
 
     const formatTime = (seconds) => {

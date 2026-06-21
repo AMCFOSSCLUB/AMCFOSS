@@ -3636,3 +3636,77 @@ button:hover,
         border-color: rgba(0, 255, 136, 0.4);
     }
 }
+
+/* GPU-Accelerated Premium Animations */
+.section-title {
+    position: relative;
+    overflow: hidden;
+    display: inline-block;
+}
+
+.section-title::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 60px;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2) 30%,
+        rgba(255, 255, 255, 0.5) 50%,
+        rgba(255, 255, 255, 0.2) 70%,
+        transparent
+    );
+    transform: skewX(-25deg);
+    animation: titleShimmerGleam 6s infinite ease-in-out;
+    pointer-events: none;
+}
+
+@keyframes titleShimmerGleam {
+    0% {
+        transform: translate3d(0, 0, 0) skewX(-25deg);
+    }
+    30% {
+        transform: translate3d(600px, 0, 0) skewX(-25deg);
+    }
+    100% {
+        transform: translate3d(600px, 0, 0) skewX(-25deg);
+    }
+}
+
+.primary-btn {
+    position: relative;
+    overflow: hidden;
+}
+
+.primary-btn::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -150%;
+    width: 30%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.3) 50%,
+        transparent
+    );
+    transform: skewX(-20deg);
+    animation: btnShineSwipe 5s infinite ease-in-out;
+    pointer-events: none;
+}
+
+@keyframes btnShineSwipe {
+    0% {
+        transform: translate3d(0, 0, 0) skewX(-20deg);
+    }
+    20% {
+        transform: translate3d(350px, 0, 0) skewX(-20deg);
+    }
+    100% {
+        transform: translate3d(350px, 0, 0) skewX(-20deg);
+    }
+}
