@@ -31,12 +31,49 @@ const fallbackHomeEvents = [
   },
 ];
 
+const fallbackHomeProjects = [
+  {
+    id: "mock-project-1",
+    title: "Open Source Collaboration Platform",
+    description: "A cutting-edge platform designed to streamline open source contributions and foster community collaboration.",
+    image: "https://mars-images.imgix.net/seobot/osssoftware.org/65a1c64780fd6a912cffdb41-28202c73b8cd98f80c118a2059313b9b.png?auto=compress",
+    toolsUsed: ["React", "Node.js", "GraphQL"],
+    githubLink: "#",
+    liveLink: "#",
+    credits: ["AMC FOSS Core Team"],
+  },
+  {
+    id: "mock-project-2",
+    title: "AMCFOSS CLI Utility",
+    description: "An automation helper tool built to setup local workspaces and bootstrap template directories instantly.",
+    image: "https://images.unsplash.com/photo-1515879218367-8466d910aaa4?auto=format&fit=crop&w=1200&q=80",
+    toolsUsed: ["Go", "Cobra", "CLI"],
+    githubLink: "#",
+    liveLink: "#",
+    credits: ["Core Tooling Squad"],
+  },
+  {
+    id: "mock-project-3",
+    title: "Club API Gateway",
+    description: "Centralized secure REST gateway handling community registrations, auth logs, and server routing.",
+    image: "https://images.unsplash.com/photo-1550751827-4bd374c3f58b?auto=format&fit=crop&w=1200&q=80",
+    toolsUsed: ["FastAPI", "PostgreSQL", "Docker"],
+    githubLink: "#",
+    liveLink: "#",
+    credits: ["Platform Team"],
+  },
+];
+
 // HomeEvents component moved outside to prevent re-renders
 const HomeEvents = memo(() => {
   const [homeEvents, setHomeEvents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const eventsRef = useMemo(() => collection(db, "events"), []);
   const [currentTime, setCurrentTime] = useState(new Date().getTime());
+
+  const getSortTime = useCallback((item) => {
+    return item.approvedAt?.toMillis?.() || item.createdAt?.toMillis?.() || (item.date ? new Date(item.date).getTime() : 0);
+  }, []);
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -66,6 +103,7 @@ const HomeEvents = memo(() => {
 
           const registrations = Array.isArray(eventData.registrations) ? eventData.registrations : [];
           const participantCount = registrations.length;
+          const approved = eventData.approved !== false;
           const now = new Date().getTime();
           // Check if event has ended - use end time if available, otherwise use date
           let eventEndTime = null;
@@ -90,33 +128,15 @@ const HomeEvents = memo(() => {
             participantCount,
             isFull,
             isEnded,
+            approved,
           };
-        });
+        }).filter((event) => event.approved);
 
-        // Sort events: upcoming first (by date ascending), then ended (by date descending)
-        let sortedEvents = eventsList.sort((a, b) => {
-          const dateA = a.date ? new Date(a.date).getTime() : 0;
-          const dateB = b.date ? new Date(b.date).getTime() : 0;
-          const now = new Date().getTime();
-          const aEnded = a.isEnded || (dateA && now > dateA);
-          const bEnded = b.isEnded || (dateB && now > dateB);
-
-          // If both ended or both upcoming, sort by date
-          if (aEnded === bEnded) {
-            // Ended events: most recent first (descending)
-            // Upcoming events: soonest first (ascending)
-            return aEnded ? dateB - dateA : dateA - dateB;
-          }
-          // Upcoming events come before ended events
-          return aEnded ? 1 : -1;
-        }).slice(0, 2);
-
-        if (sortedEvents.length === 0) {
-          sortedEvents = fallbackHomeEvents;
-        }
+        const sortedEvents = eventsList.sort((a, b) => getSortTime(b) - getSortTime(a)).slice(0, 2);
+        const finalEvents = sortedEvents.length === 0 ? fallbackHomeEvents : sortedEvents;
 
         if (isMounted) {
-          setHomeEvents(sortedEvents);
+          setHomeEvents(finalEvents);
           setIsLoading(false);
         }
       } catch (error) {
@@ -339,6 +359,122 @@ const HomeEvents = memo(() => {
           </Link>
         </div>
       </div>
+    </div>
+  );
+});
+
+const HomeProjects = memo(() => {
+  const [homeProjects, setHomeProjects] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const projectsRef = useMemo(() => collection(db, "projects"), []);
+
+  const getSortTime = useCallback((item) => {
+    return item.approvedAt?.toMillis?.() || item.createdAt?.toMillis?.() || 0;
+  }, []);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const loadProjects = async () => {
+      try {
+        setIsLoading(true);
+        if (!isFirebaseConfigured) {
+          if (isMounted) {
+            setHomeProjects(fallbackHomeProjects);
+            setIsLoading(false);
+          }
+          return;
+        }
+
+        const snap = await getDocsWithTimeout(projectsRef, 1500);
+        if (!isMounted) return;
+
+        const projectsList = snap.docs.map((docSnap) => {
+          const projectData = { id: docSnap.id, ...docSnap.data() };
+          return {
+            ...projectData,
+            approved: projectData.approved !== false,
+            toolsUsed: Array.isArray(projectData.toolsUsed) ? projectData.toolsUsed : [],
+            credits: Array.isArray(projectData.credits) ? projectData.credits : [],
+          };
+        }).filter((project) => project.approved);
+
+        let sortedProjects = projectsList.sort((a, b) => getSortTime(b) - getSortTime(a));
+
+        if (sortedProjects.length === 0) {
+          sortedProjects = fallbackHomeProjects;
+        }
+
+        if (isMounted) {
+          setHomeProjects(sortedProjects);
+          setIsLoading(false);
+        }
+      } catch (error) {
+        if (isMounted) {
+          const isExpectedFallback = error?.message === "Firebase is not configured";
+          if (!isExpectedFallback) {
+            console.error("Failed to load projects", error);
+          }
+          setHomeProjects(fallbackHomeProjects);
+          setIsLoading(false);
+        }
+      }
+    };
+
+    loadProjects();
+
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  if (isLoading) {
+    return (
+      <div className="projects-grid">
+        {[0, 1, 2].map((idx) => (
+          <div key={idx} className="project-card skeleton-card">
+            <div className="skeleton-image" />
+            <div className="skeleton-details">
+              <div className="skeleton-line short" />
+              <div className="skeleton-line" />
+              <div className="skeleton-line" />
+            </div>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  return (
+    <div className="projects-grid">
+      {homeProjects.map((project, idx) => (
+        <div key={project.id} className="project-card" data-aos="fade-up" data-aos-delay={idx * 100}>
+          <img
+            src={project.image}
+            alt={project.title}
+            loading="lazy"
+          />
+          <div className="project-info">
+            <h3>{project.title}</h3>
+            <p>{project.description}</p>
+            <div className="project-tech">
+              {project.toolsUsed?.map((tool) => (
+                <span key={tool}>{tool}</span>
+              ))}
+            </div>
+            {Array.isArray(project.credits) && project.credits.length ? (
+              <div className="text-xs text-slate-400" style={{ marginTop: "0.75rem" }}>
+                Credits: <span className="text-slate-200">{project.credits.join(" • ")}</span>
+              </div>
+            ) : null}
+            <div className="project-links">
+              {project.githubLink ? <a href={project.githubLink} className="github-link" target="_blank" rel="noopener noreferrer">View on GitHub</a> : null}
+              {project.liveLink ? <a href={project.liveLink} className="demo-link" target="_blank" rel="noopener noreferrer">Live Demo</a> : null}
+            </div>
+          </div>
+        </div>
+      ))}
     </div>
   );
 });
@@ -779,7 +915,7 @@ const FossApp = () => {
             <li className="auth-links">
               {user ? (
                 <Link
-                  to={role === "office_bearer" ? "/office" : role === "mentor" ? "/mentor" : "/"}
+                  to={role === "tech" ? "/office" : role === "core" ? "/mentor" : "/"}
                   className="auth-link"
                 >
                   Go to Dashboard
@@ -903,83 +1039,7 @@ const FossApp = () => {
       <section id="projects" className="section projects">
         <div className="section-content">
           <h2 className="section-title" data-aos="fade-up">Our Projects</h2>
-          <div className="projects-grid">
-            <div className="project-card" data-aos="fade-up">
-              <img
-                src="https://mars-images.imgix.net/seobot/osssoftware.org/65a1c64780fd6a912cffdb41-28202c73b8cd98f80c118a2059313b9b.png?auto=compress"
-                alt="Featured Project"
-                loading="lazy"
-              />
-              <div className="project-info">
-                <h3>Open Source Collaboration Platform</h3>
-                <p>
-                  A cutting-edge platform designed to streamline open source
-                  contributions and foster community collaboration.
-                </p>
-                <div className="project-tech">
-                  <span>React</span>
-                  <span>Node.js</span>
-                  <span>GraphQL</span>
-                </div>
-                <div className="project-links">
-                  {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-                  <a href="#" className="github-link">View on GitHub</a>
-                  {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-                  <a href="#" className="demo-link">Live Demo</a>
-                </div>
-              </div>
-            </div>
-
-            <div className="project-card" data-aos="fade-up" data-aos-delay="100">
-              <img
-                src={resolveImage("bg.jpg")}
-                alt="AMCFOSS CLI Tool"
-                loading="lazy"
-              />
-              <div className="project-info">
-                <h3>AMCFOSS CLI Utility</h3>
-                <p>
-                  An automation helper tool built to setup local workspaces and bootstrap template directories instantly.
-                </p>
-                <div className="project-tech">
-                  <span>Go</span>
-                  <span>Cobra</span>
-                  <span>CLI</span>
-                </div>
-                <div className="project-links">
-                  {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-                  <a href="#" className="github-link">View on GitHub</a>
-                  {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-                  <a href="#" className="demo-link">Live Demo</a>
-                </div>
-              </div>
-            </div>
-
-            <div className="project-card" data-aos="fade-up" data-aos-delay="200">
-              <img
-                src={resolveImage("foss-community.png")}
-                alt="Club API Gateway"
-                loading="lazy"
-              />
-              <div className="project-info">
-                <h3>Club API Gateway</h3>
-                <p>
-                  Centralized secure REST gateway handling community registrations, auth logs, and server routing.
-                </p>
-                <div className="project-tech">
-                  <span>FastAPI</span>
-                  <span>PostgreSQL</span>
-                  <span>Docker</span>
-                </div>
-                <div className="project-links">
-                  {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-                  <a href="#" className="github-link">View on GitHub</a>
-                  {/* eslint-disable-next-line jsx-a11y/anchor-is-valid */}
-                  <a href="#" className="demo-link">Live Demo</a>
-                </div>
-              </div>
-            </div>
-          </div>
+          <HomeProjects />
         </div>
       </section>
 

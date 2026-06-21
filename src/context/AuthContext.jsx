@@ -14,13 +14,21 @@ import {
 
 const AuthContext = createContext(null);
 
+const normalizeRole = (storedRole) => {
+  const value = String(storedRole || "").toLowerCase();
+  if (value === "mentor") return "core";
+  if (value === "office_bearer") return "tech";
+  if (value === "core" || value === "tech") return value;
+  return null;
+};
+
 export function useAuth() {
   return useContext(AuthContext);
 }
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null); // "mentor" | "office_bearer" | null
+  const [role, setRole] = useState(null); // "core" | "tech" | null
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -37,7 +45,8 @@ export function AuthProvider({ children }) {
         const userRef = doc(db, "users", firebaseUser.uid);
         const snap = await getDoc(userRef);
         if (snap.exists()) {
-          setRole(snap.data()?.role || null);
+          const normalizedRole = normalizeRole(snap.data()?.role);
+          setRole(normalizedRole);
         } else {
           setRole(null);
         }
@@ -66,8 +75,9 @@ export function AuthProvider({ children }) {
 
   const saveRole = async (userId, selectedRole) => {
     const userRef = doc(db, "users", userId);
-    await setDoc(userRef, { role: selectedRole }, { merge: true });
-    setRole(selectedRole);
+    const normalizedRole = normalizeRole(selectedRole);
+    await setDoc(userRef, { role: normalizedRole }, { merge: true });
+    setRole(normalizedRole);
   };
 
   const value = useMemo(() => ({

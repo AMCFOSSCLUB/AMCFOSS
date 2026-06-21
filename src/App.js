@@ -87,7 +87,7 @@ const App = () => {
         <Routes>
           <Route path="/" element={<FossApp />} />
           <Route path="/login" element={<Login />} />
-          <Route path="/register" element={<Register />} />
+          <Route path="/23223" element={<Register />} />
           <Route
             path="/select-role"
             element={
@@ -99,7 +99,7 @@ const App = () => {
           <Route
             path="/mentor"
             element={
-              <ProtectedRoute requireRole="mentor">
+              <ProtectedRoute requireRole="core">
                 <MentorDashboard />
               </ProtectedRoute>
             }
@@ -107,7 +107,7 @@ const App = () => {
           <Route
             path="/office"
             element={
-              <ProtectedRoute requireRole="office_bearer">
+              <ProtectedRoute requireRole="tech">
                 <OfficeDashboard />
               </ProtectedRoute>
             }

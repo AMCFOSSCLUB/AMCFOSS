@@ -14,9 +14,9 @@ export default function Login() {
   // Auto-redirect if user is already logged in and has a role
   useEffect(() => {
     if (!authLoading && user) {
-      if (role === "mentor") {
+      if (role === "core") {
         navigate("/mentor", { replace: true });
-      } else if (role === "office_bearer") {
+      } else if (role === "tech") {
         navigate("/office", { replace: true });
       } else if (!role) {
         navigate("/select-role", { replace: true });
@@ -30,7 +30,7 @@ export default function Login() {
     setLoading(true);
     try {
       const domain = email.split("@")[1] || "";
-      const isCollege = domain.toLowerCase().includes("amrita") || domain.toLowerCase().includes("edu");
+      const isCollege = domain.toLowerCase().includes("amcfoss") || domain.toLowerCase().includes("edu");
       if (!isCollege) {
         setError("Please use your college email ID.");
         setLoading(false);
@@ -46,11 +46,11 @@ export default function Login() {
 
   return (
     <AuthLayout
-      title="Welcome back, trailblazer."
-      subtitle="Sign in with your AMC FOSS college email to unlock your personalised workspace."
+      title="Welcome back."
+      subtitle="Sign in with your AMC FOSS email to open your personalised workspace."
       footer={
         <span>
-          
+
         </span>
       }
     >
@@ -61,23 +61,23 @@ export default function Login() {
       ) : null}
       <form onSubmit={onSubmit} className="space-y-5">
         <div className="space-y-2">
-          <label className="text-xs uppercase tracking-[0.3em] text-slate-400">College Email</label>
+          <label className="text-xs uppercase tracking-[0.3em] text-slate-300">College Email</label>
           <input
             type="email"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/10 focus:ring-2 focus:ring-[#00ff88]/50"
-            placeholder="you@amrita.edu"
+            className="w-full rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#00ff88]/70 focus:bg-white/10 focus:ring-2 focus:ring-[#00ff88]/40"
+            placeholder="you@amcfoss.com"
             required
           />
         </div>
         <div className="space-y-2">
-          <label className="text-xs uppercase tracking-[0.3em] text-slate-400">Password</label>
+          <label className="text-xs uppercase tracking-[0.3em] text-slate-300">Password</label>
           <input
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/10 focus:ring-2 focus:ring-[#00ff88]/50"
+            className="w-full rounded-[1.4rem] border border-white/10 bg-white/5 px-4 py-3 text-sm text-white outline-none transition placeholder:text-slate-500 focus:border-[#00ff88]/70 focus:bg-white/10 focus:ring-2 focus:ring-[#00ff88]/40"
             placeholder="Enter your password"
             required
           />
@@ -85,7 +85,7 @@ export default function Login() {
         <button
           type="submit"
           disabled={loading}
-          className="group relative w-full overflow-hidden rounded-2xl bg-gradient-to-r from-[#00ff88] via-[#2ecc71] to-[#27ae60] px-6 py-3 text-sm font-semibold uppercase tracking-[0.25em] text-[#1a1a2e] shadow-lg shadow-[#00ff88]/30 transition focus:outline-none focus:ring-2 focus:ring-[#00ff88] focus:ring-offset-2 focus:ring-offset-slate-900 disabled:opacity-60 font-bold"
+          className="group relative w-full overflow-hidden rounded-[1.4rem] bg-gradient-to-r from-[#00ff88] via-[#2ecc71] to-[#27ae60] px-6 py-3 text-sm font-semibold uppercase tracking-[0.25em] text-[#0b1020] shadow-[0_18px_50px_rgba(0,255,136,0.24)] transition focus:outline-none focus:ring-2 focus:ring-[#00ff88] focus:ring-offset-2 focus:ring-offset-slate-950 disabled:opacity-60"
         >
           <span className="absolute inset-0 translate-y-full bg-white/20 transition duration-300 group-hover:translate-y-0" />
           <span className="relative">{loading ? "Signing In..." : "Enter Workspace"}</span>

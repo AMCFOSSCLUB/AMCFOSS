@@ -33,6 +33,8 @@ export default function Events() {
   const [error, setError] = useState(null);
   const eventsRef = useMemo(() => collection(db, "events"), []);
 
+  const getSortTime = (item) => item.approvedAt?.toMillis?.() || item.createdAt?.toMillis?.() || (item.date ? new Date(item.date).getTime() : 0);
+
   useEffect(() => {
     const load = async () => {
       setLoading(true);
@@ -46,6 +48,7 @@ export default function Events() {
         const eventsList = snap.docs.map((docSnap) => {
           const eventData = { id: docSnap.id, ...docSnap.data() };
           const registrations = Array.isArray(eventData.registrations) ? eventData.registrations : [];
+          const approved = eventData.approved !== false;
 
           // Check if event has ended - use end time if available, otherwise use date
           const now = new Date().getTime();
@@ -72,25 +75,13 @@ export default function Events() {
             participantCount,
             isFull,
             isEnded,
+            approved,
           };
-        });
+        }).filter((event) => event.approved);
 
-        // Sort events: upcoming first (by date ascending), then ended (by date descending)
+        // Sort latest approved submissions first
         const sortedEvents = eventsList.sort((a, b) => {
-          const dateA = a.date ? new Date(a.date).getTime() : 0;
-          const dateB = b.date ? new Date(b.date).getTime() : 0;
-          const now = new Date().getTime();
-          const aEnded = a.isEnded || (dateA && now > dateA);
-          const bEnded = b.isEnded || (dateB && now > dateB);
-
-          // If both ended or both upcoming, sort by date
-          if (aEnded === bEnded) {
-            // Ended events: most recent first (descending)
-            // Upcoming events: soonest first (ascending)
-            return aEnded ? dateB - dateA : dateA - dateB;
-          }
-          // Upcoming events come before ended events
-          return aEnded ? 1 : -1;
+          return getSortTime(b) - getSortTime(a);
         });
 
         setEvents(sortedEvents);

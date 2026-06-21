@@ -76,6 +76,7 @@ const sendEmailsForEvent = async (event, participants) => {
 export default function OfficeDashboard() {
   const { logout } = useAuth();
   const [events, setEvents] = useState([]);
+  const [projects, setProjects] = useState([]);
   const [title, setTitle] = useState("");
   const [date, setDate] = useState("");
   const [time, setTime] = useState("");
@@ -96,9 +97,15 @@ export default function OfficeDashboard() {
   const [editParticipantLimit, setEditParticipantLimit] = useState("");
   const [editEventLink, setEditEventLink] = useState("");
   const [emailSendingId, setEmailSendingId] = useState(null);
+  const [loadingProjects, setLoadingProjects] = useState(false);
 
   const eventsRef = useMemo(() => collection(db, "events"), []);
+  const projectsRef = useMemo(() => collection(db, "projects"), []);
   const tasksRef = useMemo(() => collection(db, "tasks"), []);
+
+  const isPermissionError = (error) => {
+    return error?.code === "permission-denied" || /insufficient permissions/i.test(error?.message || "");
+  };
 
   const loadEvents = async () => {
     setLoading(true);
@@ -109,6 +116,7 @@ export default function OfficeDashboard() {
         const registrations = Array.isArray(eventData.registrations) ? eventData.registrations : [];
         const participantCount = registrations.length;
         const isFull = eventData.participantLimit && participantCount >= eventData.participantLimit;
+        const approved = eventData.approved !== false;
         
         // Check if event has ended - use end time if available, otherwise use date
         const now = new Date().getTime();
@@ -135,6 +143,7 @@ export default function OfficeDashboard() {
           isFull,
           isEnded,
           isActive,
+          approved,
         };
       });
 
@@ -151,8 +160,47 @@ export default function OfficeDashboard() {
       });
       
       setEvents(sortedEvents);
+    } catch (error) {
+      if (isPermissionError(error)) {
+        console.warn("Events are unavailable because Firestore denied the read.");
+      } else {
+        console.error("Failed to load events", error);
+      }
+      setEvents([]);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const loadProjects = async () => {
+    setLoadingProjects(true);
+    try {
+      const snap = await getDocs(projectsRef);
+      const projectList = snap.docs.map((docSnap) => {
+        const projectData = { id: docSnap.id, ...docSnap.data() };
+        return {
+          ...projectData,
+          approved: projectData.approved !== false,
+          approvalStatus: projectData.approvalStatus || (projectData.approved === false ? "pending" : "approved"),
+        };
+      });
+
+      projectList.sort((a, b) => {
+        const aTime = a.approvedAt?.toMillis?.() || a.createdAt?.toMillis?.() || 0;
+        const bTime = b.approvedAt?.toMillis?.() || b.createdAt?.toMillis?.() || 0;
+        return bTime - aTime;
+      });
+
+      setProjects(projectList);
+    } catch (error) {
+      if (isPermissionError(error)) {
+        console.warn("Projects are unavailable because Firestore denied the read.");
+      } else {
+        console.error("Failed to load projects", error);
+      }
+      setProjects([]);
+    } finally {
+      setLoadingProjects(false);
     }
   };
 
@@ -173,6 +221,13 @@ export default function OfficeDashboard() {
         };
       });
       setAllTasks(tasksList);
+    } catch (error) {
+      if (isPermissionError(error)) {
+        console.warn("Tasks are unavailable because Firestore denied the read.");
+      } else {
+        console.error("Failed to load tasks", error);
+      }
+      setAllTasks([]);
     } finally {
       setLoadingTasks(false);
     }
@@ -181,6 +236,7 @@ export default function OfficeDashboard() {
   useEffect(() => {
     loadEvents();
     loadTasks();
+    loadProjects();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -195,6 +251,9 @@ export default function OfficeDashboard() {
       participantLimit: participantLimit ? parseInt(participantLimit) : null,
       eventLink: eventLink.trim() || null,
       registrations: [],
+      approved: true,
+      approvalStatus: "approved",
+      approvedAt: serverTimestamp(),
       createdAt: serverTimestamp(),
     });
     setTitle("");
@@ -204,6 +263,30 @@ export default function OfficeDashboard() {
     setParticipantLimit("");
     setEventLink("");
     await loadEvents();
+  };
+
+  const approveEvent = async (event) => {
+    await updateEvent(event.id, {
+      approved: true,
+      approvalStatus: "approved",
+      approvedAt: serverTimestamp(),
+    });
+  };
+
+  const approveProject = async (project) => {
+    await updateDoc(doc(db, "projects", project.id), {
+      approved: true,
+      approvalStatus: "approved",
+      approvedAt: serverTimestamp(),
+    });
+    await loadProjects();
+  };
+
+  const deleteProject = async (id) => {
+    if (window.confirm("Are you sure you want to delete this project submission?")) {
+      await deleteDoc(doc(db, "projects", id));
+      await loadProjects();
+    }
   };
 
   const loadParticipants = (event) => {
@@ -358,13 +441,13 @@ export default function OfficeDashboard() {
                         </div>
                       )}
                       <div className="mt-2">
-                        {event.isActive ? (
+                        {event.approved ? (
                           <span className="inline-flex items-center gap-1 rounded-full border border-[#00ff88]/40 bg-[#00ff88]/10 px-3 py-1 text-xs font-semibold text-[#00ff88]">
-                            Active
+                            Approved
                           </span>
                         ) : (
-                          <span className="inline-flex items-center gap-1 rounded-full border border-gray-400/40 bg-gray-500/10 px-3 py-1 text-xs font-semibold text-gray-300">
-                            Ended
+                          <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/40 bg-amber-500/10 px-3 py-1 text-xs font-semibold text-amber-200">
+                            Pending Approval
                           </span>
                         )}
                       </div>
@@ -389,6 +472,14 @@ export default function OfficeDashboard() {
                           className="rounded-full border border-blue-400/40 bg-blue-500/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-blue-200 transition hover:border-blue-400 hover:bg-blue-500/30"
                         >
                           Edit
+                        </button>
+                      )}
+                      {!event.approved && (
+                        <button
+                          onClick={() => approveEvent(event)}
+                          className="rounded-full border border-emerald-400/40 bg-emerald-500/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-200 transition hover:border-emerald-400 hover:bg-emerald-500/30"
+                        >
+                          Approve
                         </button>
                       )}
                       <button
@@ -486,6 +577,84 @@ export default function OfficeDashboard() {
             </div>
           </motion.div>
         </div>
+
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.2, ease: "easeOut" }}
+          className="mt-12 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur"
+        >
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <h3 className="text-xl font-semibold text-white">Project Approval Queue</h3>
+              <p className="text-xs text-slate-400">Approve core-submitted projects so they appear on the home page.</p>
+            </div>
+            {loadingProjects ? <span className="text-xs uppercase tracking-[0.35em] text-[#00ff88]">Refreshing…</span> : null}
+          </div>
+          <div className="mt-6 space-y-4">
+            {projects.filter((project) => !project.approved).length === 0 && !loadingProjects ? (
+              <div className="rounded-2xl border border-white/10 bg-white/5 px-5 py-10 text-center text-sm text-slate-300">
+                No pending projects right now.
+              </div>
+            ) : null}
+            {projects.filter((project) => !project.approved).map((project) => (
+              <div
+                key={project.id}
+                className="group overflow-hidden rounded-2xl border border-white/10 bg-white/5 p-5 transition hover:border-[#00ff88]/40 hover:bg-white/10"
+              >
+                <div className="flex flex-col gap-4 md:flex-row md:items-start md:justify-between">
+                  <div className="flex-1">
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="rounded-full border border-[#00ff88]/40 bg-[#00ff88]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.3em] text-[#00ff88]">
+                        Project
+                      </span>
+                      <h4 className="text-lg font-semibold text-white">{project.title}</h4>
+                    </div>
+                    {project.description ? <p className="mt-3 max-w-2xl text-sm text-slate-300/90">{project.description}</p> : null}
+                    <div className="mt-3 flex flex-wrap gap-2 text-xs text-slate-400">
+                      {Array.isArray(project.toolsUsed) && project.toolsUsed.length
+                        ? project.toolsUsed.map((tool) => (
+                            <span key={tool} className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-slate-300">
+                              {tool}
+                            </span>
+                          ))
+                        : null}
+                    </div>
+                    {Array.isArray(project.credits) && project.credits.length ? (
+                      <div className="mt-3 text-xs text-slate-400">
+                        Credits: <span className="text-slate-200">{project.credits.join(" • ")}</span>
+                      </div>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {project.githubLink && (
+                      <a
+                        href={project.githubLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-200 transition hover:border-[#00ff88]/60 hover:text-[#00ff88]"
+                      >
+                        GitHub
+                      </a>
+                    )}
+                    <button
+                      onClick={() => approveProject(project)}
+                      className="rounded-full border border-emerald-400/40 bg-emerald-500/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-emerald-200 transition hover:border-emerald-400 hover:bg-emerald-500/30"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => deleteProject(project.id)}
+                      className="rounded-full border border-red-400/40 bg-red-500/20 px-4 py-2 text-xs font-semibold uppercase tracking-[0.3em] text-red-200 transition hover:border-red-400 hover:bg-red-500/30"
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
 
         {/* Mentor Tasks Section */}
         <motion.div

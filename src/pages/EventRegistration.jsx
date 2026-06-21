@@ -30,6 +30,12 @@ export default function EventRegistration() {
         const snap = await getDoc(doc(db, "events", id));
         if (snap.exists()) {
           const eventData = { id: snap.id, ...snap.data() };
+          const approved = eventData.approved !== false;
+          if (!approved) {
+            setEvent(null);
+            alert("This event is still pending approval.");
+            return;
+          }
           const registrations = Array.isArray(eventData.registrations) ? eventData.registrations : [];
           
           // Check if event has ended - use end time if available, otherwise use date

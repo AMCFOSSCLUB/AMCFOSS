@@ -5,16 +5,16 @@ import { useAuth } from "../context/AuthContext";
 
 const cards = [
   {
-    id: "mentor",
-    title: "Mentor",
-    accent: "Guide contributors, assign tasks, and track execution.",
-    points: ["Task assignment", "Progress snapshots", "Mentor insights"],
+    id: "core",
+    title: "Core",
+    accent: "Guide contributors, assign tasks, and keep delivery on track.",
+    points: ["Task assignment", "Progress snapshots", "Core insights"],
     gradient: "from-[#00ff88]/40 to-[#2ecc71]/40",
   },
   {
-    id: "office_bearer",
-    title: "Office Bearer",
-    accent: "Design events, manage registrations, and broadcast updates.",
+    id: "tech",
+    title: "Tech",
+    accent: "Design events, manage registrations, and ship technical updates.",
     points: ["Event lifecycle", "Registrations", "Community updates"],
     gradient: "from-[#2ecc71]/40 to-[#27ae60]/40",
   },
@@ -33,9 +33,9 @@ export default function SelectRole() {
     }
     // If user already has a role, auto-redirect to their dashboard
     if (!loading && user && role) {
-      if (role === "mentor") {
+      if (role === "core") {
         navigate("/mentor", { replace: true });
-      } else if (role === "office_bearer") {
+      } else if (role === "tech") {
         navigate("/office", { replace: true });
       }
     }
@@ -46,7 +46,7 @@ export default function SelectRole() {
     setSaving(true);
     await saveRole(user.uid, selected);
     setSaving(false);
-    navigate(selected === "mentor" ? "/mentor" : "/office", { replace: true });
+    navigate(selected === "core" ? "/mentor" : "/office", { replace: true });
   };
 
   if (!user) {
@@ -74,7 +74,7 @@ export default function SelectRole() {
             transition={{ duration: 0.6, ease: "easeOut" }}
             className="text-4xl font-semibold text-white"
           >
-            Choose your impact lane.
+            Choose Core or Tech.
           </motion.h1>
           <motion.p
             initial={{ opacity: 0, y: 20 }}
@@ -109,7 +109,7 @@ export default function SelectRole() {
                 />
                 <div className="relative z-10">
                   <div className="mb-4 inline-flex items-center gap-3 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs uppercase tracking-[0.35em] text-[#00ff88]">
-                    {idx === 0 ? "Guide" : "Orchestrate"}
+                    {idx === 0 ? "Core" : "Tech"}
                   </div>
                   <div className="mb-4 flex items-center justify-between">
                     <h2 className="text-2xl font-semibold text-white">{card.title}</h2>
@@ -118,7 +118,7 @@ export default function SelectRole() {
                         isActive ? "bg-[#00ff88]/20 text-[#00ff88]" : "bg-white/5 text-slate-200 group-hover:bg-white/10"
                       }`}
                     >
-                      {idx === 0 ? "🛠️" : "📣"}
+                      {idx === 0 ? "🧭" : "⚙️"}
                     </span>
                   </div>
                   <p className="mb-5 text-sm text-slate-300/90">{card.accent}</p>

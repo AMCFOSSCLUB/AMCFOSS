@@ -13,6 +13,20 @@ export default function MentorDashboard() {
   const [taskDomain, setTaskDomain] = useState("");
   const [allTasks, setAllTasks] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const [publishMode, setPublishMode] = useState("event");
+  const [contentTitle, setContentTitle] = useState("");
+  const [contentDate, setContentDate] = useState("");
+  const [contentTime, setContentTime] = useState("");
+  const [contentDescription, setContentDescription] = useState("");
+  const [contentLimit, setContentLimit] = useState("");
+  const [contentLink, setContentLink] = useState("");
+  const [projectImage, setProjectImage] = useState("");
+  const [projectGithubLink, setProjectGithubLink] = useState("");
+  const [projectLiveLink, setProjectLiveLink] = useState("");
+  const [projectTools, setProjectTools] = useState("");
+  const [projectCredits, setProjectCredits] = useState("");
+  const [publishing, setPublishing] = useState(false);
   
   // Mentor profile editing
   const [isEditingProfile, setIsEditingProfile] = useState(false);
@@ -22,6 +36,8 @@ export default function MentorDashboard() {
   const [mentorDomain, setMentorDomain] = useState("");
 
   const tasksRef = useMemo(() => collection(db, "tasks"), []);
+  const eventsRef = useMemo(() => collection(db, "events"), []);
+  const projectsRef = useMemo(() => collection(db, "projects"), []);
 
   const loadTasks = async () => {
     setLoading(true);
@@ -94,6 +110,94 @@ export default function MentorDashboard() {
     await loadTasks();
   };
 
+  const resetPublishingForm = () => {
+    setContentTitle("");
+    setContentDate("");
+    setContentTime("");
+    setContentDescription("");
+    setContentLimit("");
+    setContentLink("");
+    setProjectImage("");
+    setProjectGithubLink("");
+    setProjectLiveLink("");
+    setProjectTools("");
+    setProjectCredits("");
+  };
+
+  const parseLineItems = (text) =>
+    text
+      .split(/\n|,/)
+      .map((item) => item.trim())
+      .filter(Boolean);
+
+  const publishContent = async (e) => {
+    e.preventDefault();
+    if (!user || !contentTitle.trim()) return;
+
+    setPublishing(true);
+    try {
+      if (publishMode === "project") {
+        if (!projectImage.trim()) {
+          alert("Please add a project image URL.");
+          return;
+        }
+        if (!projectGithubLink.trim()) {
+          alert("Please add a GitHub link.");
+          return;
+        }
+
+        await addDoc(projectsRef, {
+          title: contentTitle.trim(),
+          description: contentDescription.trim(),
+          image: projectImage.trim(),
+          githubLink: projectGithubLink.trim(),
+          liveLink: projectLiveLink.trim() || null,
+          toolsUsed: parseLineItems(projectTools),
+          credits: parseLineItems(projectCredits),
+          createdBy: user.uid,
+          createdByName: mentorName || user.displayName || user.email || "Core",
+          createdByRole: "core",
+          approved: true,
+          approvalStatus: "approved",
+          approvedByRole: "core",
+          approvedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+        });
+      } else {
+        if (!contentDate) {
+          alert("Please select an event date.");
+          return;
+        }
+
+        await addDoc(eventsRef, {
+          title: contentTitle.trim(),
+          date: contentDate,
+          time: contentTime || null,
+          description: contentDescription.trim(),
+          participantLimit: contentLimit ? parseInt(contentLimit, 10) : null,
+          eventLink: contentLink.trim() || null,
+          registrations: [],
+          createdBy: user.uid,
+          createdByName: mentorName || user.displayName || user.email || "Core",
+          createdByRole: "core",
+          approved: true,
+          approvalStatus: "approved",
+          approvedByRole: "core",
+          approvedAt: serverTimestamp(),
+          createdAt: serverTimestamp(),
+        });
+      }
+
+      resetPublishingForm();
+      alert(publishMode === "project" ? "Project submitted for approval." : "Event submitted for approval.");
+    } catch (error) {
+      console.error("Failed to publish content", error);
+      alert(error.message || "Failed to submit content.");
+    } finally {
+      setPublishing(false);
+    }
+  };
+
   const saveMentorProfile = async () => {
     if (!user) return;
     try {
@@ -103,7 +207,7 @@ export default function MentorDashboard() {
         email: mentorEmail,
         rollNo: mentorRollNo,
         domain: mentorDomain,
-        role: "mentor",
+        role: "core",
       }, { merge: true });
       setIsEditingProfile(false);
       await loadMentorProfile();
@@ -121,30 +225,219 @@ export default function MentorDashboard() {
         <div className="absolute -left-28 bottom-10 h-[28rem] w-[28rem] rounded-full bg-[#00ff88]/20 blur-3xl" />
         <div className="absolute -right-32 top-0 h-[26rem] w-[26rem] rounded-full bg-[#2ecc71]/15 blur-3xl" />
       </div>
-
       <div className="relative z-10 mx-auto flex min-h-screen max-w-6xl flex-col px-6 py-16 lg:px-12">
-        <header className="mb-10 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <header className="mb-10 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <h1 className="text-4xl font-semibold text-white">Mentor Command Deck</h1>
+            <h1 className="text-4xl font-semibold text-white">Core Command Deck</h1>
             <p className="mt-2 text-sm text-slate-300">
-              Build momentum with structured task assignments and real-time status tracking.
+              Manage community events, publish new open-source projects, and assign contributor tasks.
             </p>
           </div>
           <div className="flex items-center gap-3">
             <Link
               to="/"
-              className="self-start rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-slate-300 transition hover:border-[#00ff88]/50 hover:text-[#00ff88]"
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-slate-300 transition hover:border-[#00ff88]/50 hover:text-[#00ff88]"
             >
               Go to Home
             </Link>
             <button
               onClick={logout}
-              className="self-start rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-slate-300 transition hover:border-[#00ff88]/50 hover:text-[#00ff88]"
+              className="rounded-full border border-white/10 bg-white/5 px-4 py-2 text-xs font-semibold uppercase tracking-[0.35em] text-slate-300 transition hover:border-[#00ff88]/50 hover:text-[#00ff88]"
             >
               Sign Out
             </button>
           </div>
         </header>
+
+        <motion.div
+          initial={{ opacity: 0, y: 25 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, delay: 0.05, ease: "easeOut" }}
+          className="mb-10 overflow-hidden rounded-3xl border border-white/10 bg-white/5 p-8 shadow-2xl backdrop-blur"
+        >
+          <div className="relative z-10">
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div>
+                <h2 className="text-xl font-semibold text-white">Core Publishing Studio</h2>
+                <p className="mt-2 text-xs text-slate-400">
+                  Switch between event and project submissions. New entries wait for approval before appearing on the home page.
+                </p>
+              </div>
+              <div className="inline-flex overflow-hidden rounded-full border border-white/10 bg-white/5 p-1">
+                <button
+                  type="button"
+                  onClick={() => setPublishMode("event")}
+                  className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] transition ${
+                    publishMode === "event" ? "bg-[#00ff88] text-[#07111e]" : "text-slate-300 hover:text-white"
+                  }`}
+                >
+                  Event
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPublishMode("project")}
+                  className={`rounded-full px-4 py-2 text-xs font-semibold uppercase tracking-[0.25em] transition ${
+                    publishMode === "project" ? "bg-[#00ff88] text-[#07111e]" : "text-slate-300 hover:text-white"
+                  }`}
+                >
+                  Project
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={publishContent} className="mt-6">
+              <motion.div
+                key={publishMode}
+                initial={{ opacity: 0, y: 15 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4 }}
+                className="grid gap-5 lg:grid-cols-2"
+              >
+                <div className="space-y-2 lg:col-span-2">
+                  <label className="text-xs uppercase tracking-[0.3em] text-slate-400">
+                    {publishMode === "project" ? "Project Title" : "Event Title"}
+                  </label>
+                  <input
+                    value={contentTitle}
+                    onChange={(e) => setContentTitle(e.target.value)}
+                    placeholder={publishMode === "project" ? "Open Source Showcase" : "Zero to Production Workshop"}
+                    className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/15 focus:ring-2 focus:ring-[#00ff88]/40"
+                    required
+                  />
+                </div>
+
+                {publishMode === "event" ? (
+                  <>
+                    <div className="space-y-2">
+                      <label className="text-xs uppercase tracking-[0.3em] text-slate-400">Event Date</label>
+                      <input
+                        type="date"
+                        value={contentDate}
+                        onChange={(e) => setContentDate(e.target.value)}
+                        className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/15 focus:ring-2 focus:ring-[#00ff88]/40"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs uppercase tracking-[0.3em] text-slate-400">Event Time (Optional)</label>
+                      <input
+                        type="time"
+                        value={contentTime}
+                        onChange={(e) => setContentTime(e.target.value)}
+                        className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/15 focus:ring-2 focus:ring-[#00ff88]/40"
+                      />
+                    </div>
+                    <div className="space-y-2 lg:col-span-2">
+                      <label className="text-xs uppercase tracking-[0.3em] text-slate-400">Event Narrative</label>
+                      <textarea
+                        value={contentDescription}
+                        onChange={(e) => setContentDescription(e.target.value)}
+                        placeholder="Describe the experience, speaker lineup, or expected outcomes."
+                        className="h-32 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/15 focus:ring-2 focus:ring-[#00ff88]/40"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs uppercase tracking-[0.3em] text-slate-400">Participant Limit (Optional)</label>
+                      <input
+                        type="number"
+                        min="1"
+                        value={contentLimit}
+                        onChange={(e) => setContentLimit(e.target.value)}
+                        placeholder="Leave empty for unlimited"
+                        className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/15 focus:ring-2 focus:ring-[#00ff88]/40"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs uppercase tracking-[0.3em] text-slate-400">Event Link (Optional)</label>
+                      <input
+                        type="url"
+                        value={contentLink}
+                        onChange={(e) => setContentLink(e.target.value)}
+                        placeholder="https://meet.google.com/..."
+                        className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/15 focus:ring-2 focus:ring-[#00ff88]/40"
+                      />
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="space-y-2 lg:col-span-2">
+                      <label className="text-xs uppercase tracking-[0.3em] text-slate-400">Project Image URL</label>
+                      <input
+                        type="url"
+                        value={projectImage}
+                        onChange={(e) => setProjectImage(e.target.value)}
+                        placeholder="https://.../project-image.png"
+                        className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/15 focus:ring-2 focus:ring-[#00ff88]/40"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2 lg:col-span-2">
+                      <label className="text-xs uppercase tracking-[0.3em] text-slate-400">Project Description</label>
+                      <textarea
+                        value={contentDescription}
+                        onChange={(e) => setContentDescription(e.target.value)}
+                        placeholder="Explain the project impact, scope, and outcome."
+                        className="h-32 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/15 focus:ring-2 focus:ring-[#00ff88]/40"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2 lg:col-span-2">
+                      <label className="text-xs uppercase tracking-[0.3em] text-slate-400">GitHub Link</label>
+                      <input
+                        type="url"
+                        value={projectGithubLink}
+                        onChange={(e) => setProjectGithubLink(e.target.value)}
+                        placeholder="https://github.com/..."
+                        className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/15 focus:ring-2 focus:ring-[#00ff88]/40"
+                        required
+                      />
+                    </div>
+                    <div className="space-y-2 lg:col-span-2">
+                      <label className="text-xs uppercase tracking-[0.3em] text-slate-400">Deployed Link (Optional)</label>
+                      <input
+                        type="url"
+                        value={projectLiveLink}
+                        onChange={(e) => setProjectLiveLink(e.target.value)}
+                        placeholder="https://..."
+                        className="w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/15 focus:ring-2 focus:ring-[#00ff88]/40"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs uppercase tracking-[0.3em] text-slate-400">Tools Used</label>
+                      <textarea
+                        value={projectTools}
+                        onChange={(e) => setProjectTools(e.target.value)}
+                        placeholder="React\nFirebase\nTailwind"
+                        className="h-32 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/15 focus:ring-2 focus:ring-[#00ff88]/40"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="text-xs uppercase tracking-[0.3em] text-slate-400">Credits</label>
+                      <textarea
+                        value={projectCredits}
+                        onChange={(e) => setProjectCredits(e.target.value)}
+                        placeholder="Ananya\nRahul\nSanjay"
+                        className="h-32 w-full rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm text-white outline-none transition focus:border-[#00ff88]/70 focus:bg-white/15 focus:ring-2 focus:ring-[#00ff88]/40"
+                      />
+                      <p className="text-xs text-slate-400">Add one team member name per line. Commas are not required.</p>
+                    </div>
+                  </>
+                )}
+
+                <div className="lg:col-span-2 mt-4">
+                  <button
+                    type="submit"
+                    disabled={publishing}
+                    className="group relative inline-flex w-full items-center justify-center overflow-hidden rounded-2xl bg-gradient-to-r from-[#00ff88] via-[#2ecc71] to-[#27ae60] px-6 py-3 text-sm font-semibold uppercase tracking-[0.3em] text-[#1a1a2e] shadow-lg shadow-[#00ff88]/25 transition hover:shadow-[#00ff88]/40 disabled:opacity-60 font-bold"
+                  >
+                    <span className="absolute inset-0 translate-y-full bg-white/20 transition duration-300 group-hover:translate-y-0" />
+                    <span className="relative">{publishing ? "Submitting..." : publishMode === "project" ? "Submit Project" : "Submit Event"}</span>
+                  </button>
+                </div>
+              </motion.div>
+            </form>
+          </div>
+        </motion.div>
 
         <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr]">
           <motion.div
@@ -158,7 +451,7 @@ export default function MentorDashboard() {
               <div className="mb-6 flex flex-wrap items-center justify-between gap-4">
                 <div className="flex flex-wrap items-center gap-4">
                   <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs uppercase tracking-[0.35em] text-[#00ff88]">
-                    Mentor Profile
+                    Core Profile
                   </span>
                   <span className="rounded-full border border-[#00ff88]/40 bg-[#00ff88]/10 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-[#00ff88]">
                     Live
